@@ -6,5 +6,6 @@ __pycache__/
 *.zip
 .env
 .env.*
+/skills/clip-performance-accounting/references/attribution.json
 outputs/
 node_modules/

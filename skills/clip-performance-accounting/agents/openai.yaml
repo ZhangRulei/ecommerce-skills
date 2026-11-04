@@ -1,0 +1,3 @@
+interface:
+  display_name: "剪辑人员业绩核算"
+  short_description: "按统一口径生成多平台剪辑人员报表，汇总主页、投流、创建及有效素材"

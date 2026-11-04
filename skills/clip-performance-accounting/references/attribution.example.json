@@ -1,0 +1,39 @@
+{
+  "people": [
+    {
+      "name": "剪辑甲",
+      "douyin": "示例抖音甲",
+      "wechat": "示例视频号甲",
+      "kuaishou": "示例共享店",
+      "short": "-ja",
+      "alias": "示例甲"
+    },
+    {
+      "name": "剪辑乙",
+      "douyin": "示例抖音乙",
+      "wechat": "示例视频号乙",
+      "kuaishou": "示例共享店",
+      "short": "-jb",
+      "alias": "示例乙"
+    }
+  ],
+  "wechat_home_aliases": {
+    "示例视频号甲别称": "示例视频号甲"
+  },
+  "unconfirmed": [
+    "待核称呼"
+  ],
+  "confirmed_materials": {
+    "period": "2025-01",
+    "platform": "抖音",
+    "shop": "示例店",
+    "shop_aliases": [],
+    "records": [
+      {
+        "id": "demo-001",
+        "title": "合成作品 #示例抖音甲 #示例抖音乙",
+        "owner": "剪辑乙"
+      }
+    ]
+  }
+}
