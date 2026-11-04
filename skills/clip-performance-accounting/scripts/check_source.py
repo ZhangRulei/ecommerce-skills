@@ -101,47 +101,90 @@ def channel(platform, source):
         return choices[source]
     return DEFAULT_CHANNEL[platform]
 
-def resolve(platform, shop, title, material, start, end, mapping):
+def title_hits(platform, title, people):
+    hits = {}
+    for person in people:
+        labels = [person["name"], *(person.get("alias") or "").split("、")]
+        found = [label for label in labels if label and label in title]
+        short = person.get("short")
+        if short and re.search(re.escape(short) + r"(?![A-Za-z])", title, re.I):
+            found.append(short)
+        if found:
+            hits.setdefault(person["name"], []).extend(found)
+    if hits:
+        return "姓名或简称", hits
+
+    tags = {s.casefold() for s in re.findall(r"#([^\s#＃，,。.!！?？、；;：:\[\]【】]+)", title)}
+    field = TOPIC_FIELD.get(platform)
+    for person in people:
+        account = text(person.get(field)) if field else ""
+        if account and account.casefold() in tags:
+            hits.setdefault(person["name"], []).append("#" + account)
+    return "账号话题", hits
+
+
+def prior_decision(platform, shop, title, material, start, end, mapping, hits):
+    if platform != "douyin" or material in BLANK:
+        return None
+    groups = mapping.get("confirmed_materials") or []
+    if isinstance(groups, dict):
+        groups = [groups]
+    records = [r for group in groups
+               if group.get("platform") in ("抖音", "douyin")
+               and shop in [group["shop"], *group.get("shop_aliases", [])]
+               and start.strftime("%Y-%m") == end.strftime("%Y-%m") == group["period"]
+               for r in group.get("records", []) if r["id"] == material]
+    if not records:
+        return None
+    owners = {r["owner"] for r in records
+              if " ".join(text(r["title"]).split()) == " ".join(title.split())}
+    if not owners:
+        return "待确认", "原确认ID相同但标题不同", material, hits
+    if len(owners) > 1:
+        people = {p["name"] for p in mapping["people"]}
+        disputed = {name: ["同一素材的人工记录"] for name in sorted(owners & people)}
+        if len(disputed) < 2:
+            raise ValueError(f"同一素材的人工确认与暂缓或名单不一致：{shop} / {material}")
+        return "待确认", "人工记录冲突", "、".join(disputed), disputed
+    owner = owners.pop()
+    if owner == "暂缓":
+        return "待确认", "用户已暂缓", material, {}
+    if owner not in {p["name"] for p in mapping["people"]}:
+        raise ValueError(f"人工确认人员不在当前名单：{owner}")
+    return owner, "历史人工确认", material, {}
+
+
+def classify(platform, shop, title, material, start, end, mapping):
     people = mapping["people"]
     if platform == "wechat-home":
         alias = mapping.get("wechat_home_aliases", {}).get(shop, shop)
-        matches = [p["name"] for p in people if text(p["wechat"]).casefold() == text(alias).casefold()]
+        matches = {p["name"] for p in people if text(p["wechat"]).casefold() == text(alias).casefold()}
         if len(matches) == 1:
-            return matches[0], "视频号账号映射", alias
-        return "待确认", "账号未唯一匹配", alias
-    t = text(title)
-    prior = mapping.get("confirmed_materials")
-    if (prior and platform == "douyin" and prior.get("platform") in ("抖音", "douyin")
-            and shop in [prior["shop"], *prior.get("shop_aliases", [])]
-            and start.strftime("%Y-%m") == end.strftime("%Y-%m") == prior["period"]):
-        same = next((v for v in prior["records"] if v["id"] == material), None)
-        if same:
-            if " ".join(t.split()) != " ".join(text(same["title"]).split()):
-                return "待确认", "原确认ID相同但标题不同", material
-            return same["owner"], "历史人工确认", material
-    hits = {}
-    for p in people:
-        labels = [p["name"], *(p.get("alias") or "").split("、")]
-        found = [s for s in labels if s and s in t]
-        if p.get("short") and re.search(re.escape(p["short"]) + r"(?![A-Za-z])", t, re.I):
-            found.append(p["short"])
-        if found:
-            hits[p["name"]] = "、".join(found)
+            return matches.pop(), "视频号账号映射", alias, {}
+        return "待确认", "账号未唯一匹配", alias, {}
+    title = text(title)
+    method, hits = title_hits(platform, title, people)
+    prior = prior_decision(platform, shop, title, material, start, end, mapping, hits)
+    if prior is not None:
+        return prior
     unknown = [s for s in mapping.get("unconfirmed", []) if s and
-               (re.search(r"(?:^|[-_ (])" + re.escape(s), t) if len(s) == 1 else s in t)]
-    evidence = "；".join(f"{name}={v}" for name, v in hits.items())
+               (re.search(r"(?:^|[-_ (])" + re.escape(s), title) if len(s) == 1 else s in title)]
+    evidence = "；".join(name + "：" + "、".join(tags) for name, tags in hits.items())
     if unknown:
-        return "待确认", "人员关系待确认", "；".join(x for x in [evidence, "、".join(unknown)] if x)
-    if len(hits) == 1:
-        return next(iter(hits)), "姓名或简称", evidence
+        return "待确认", "人员关系待确认", "；".join(x for x in [evidence, "、".join(unknown)] if x), hits
+    if len(hits) > 1:
+        reason = "姓名或简称命中多人" if method == "姓名或简称" else "话题命中多人"
+        return "待确认", reason, evidence, hits
     if hits:
-        return "待确认", "姓名或简称命中多人", evidence
-    tags = {s.casefold() for s in re.findall(r"#([^\s#，,。.!！?？、；;：:\[\]【】]+)", t)}
-    field = TOPIC_FIELD.get(platform)
-    candidates = [p for p in people if field and text(p.get(field)).casefold() in tags]
-    if len(candidates) == 1:
-        return candidates[0]["name"], "账号话题", candidates[0][field]
-    return "待确认", "话题命中多人" if candidates else "未匹配", "、".join(p["name"] for p in candidates)
+        name = next(iter(hits))
+        return name, method, evidence, hits
+    return "待确认", "未匹配", "", {}
+
+
+def resolve(platform, shop, title, material, start, end, mapping):
+    """兼容仅需初核三项结果的调用。交互核算读取 run() 的人工确认清单。"""
+    return classify(platform, shop, title, material, start, end, mapping)[:3]
+
 
 def arguments():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -168,6 +211,7 @@ def run(a):
     config = json.loads(a.mapping.read_text(encoding="utf-8-sig"))
     tally = Counter()
     detail = []
+    reviews = []
     grouped = {}
     seen = {}
     required = {s for s in [title, ident, field, stamp, src] if s}
@@ -220,7 +264,15 @@ def run(a):
         inside = creation is not None and a.start <= creation < a.end + timedelta(days=1)
         if not (nonzero or inside or a.platform == "wechat-home"):
             continue
-        owner, method, evidence = resolve(a.platform,a.shop,get(title),item_id,a.start,a.end,config)
+        owner, method, evidence, hits = classify(
+            a.platform, a.shop, get(title), item_id, a.start, a.end, config)
+        if owner == "待确认" and len(hits) >= 2:
+            reviews.append({
+                "平台": a.platform, "店铺／账户": a.shop, "期间": [str(a.start), str(a.end)],
+                "源文件": a.file.name, "原表行号": line, "素材ID": item_id, "作品名称": get(title),
+                "渠道": cat, "金额字段": field, "业绩金额": amount, "仅涉及创建数": inside and not nonzero,
+                "待确认原因": method, "候选人员": list(hits), "命中依据": hits,
+            })
         metrics = grouped.setdefault(cat, {}).setdefault(owner, Counter())
         if a.platform == "wechat-home":
             metrics["主页E参考额"] += amount or Decimal(0)
@@ -240,7 +292,9 @@ def run(a):
             writer.writerow(["源文件","指定工作表","原表行号","平台","店铺账户","类别","素材键","素材名称","金额字段","业绩金额","创建日期","初核人员","判定方式","依据"])
             writer.writerows(detail)
     return {"文件":str(a.file),"期间":[str(a.start),str(a.end)],"金额字段":field,
-            "原表计数":dict(tally),"渠道人员初核":grouped}
+            "原表计数":dict(tally),"渠道人员初核":grouped,
+            "人工确认":{"状态":"需向用户询问" if reviews else "无新增多人命中",
+                      "条数":len(reviews),"清单":reviews}}
 
 if __name__ == "__main__":
     try:
