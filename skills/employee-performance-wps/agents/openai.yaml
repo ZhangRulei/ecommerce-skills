@@ -1,0 +1,4 @@
+interface:
+  display_name: "有赞员工业绩与WPS日报"
+  short_description: "按归属员工核算有赞订单业绩并写入WPS日期倒序日报，保留待归属与核对明细"
+  default_prompt: "使用 $employee-performance-wps 核算我提供的有赞订单CSV，核对结果后同步到我授权的WPS工作簿。"

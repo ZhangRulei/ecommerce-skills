@@ -1,0 +1,13 @@
+{
+  "description": "全部为虚构示例，只用于本地自检，不写入真实云表",
+  "date": "2026-01-02",
+  "includedOrders": 5,
+  "excludedClosedOrders": 1,
+  "duplicateRowsRemoved": 1,
+  "performance": 3349.95,
+  "highPerformance": 3199.97,
+  "highOrderCount": 3,
+  "pointsTotal": 10,
+  "scoringPendingOrders": 0,
+  "employeeRowsIncludingUnassigned": 9
+}

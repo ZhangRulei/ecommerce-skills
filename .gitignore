@@ -9,3 +9,6 @@ __pycache__/
 /skills/clip-performance-accounting/references/attribution.json
 outputs/
 node_modules/
+/out/
+!skills/employee-performance-wps/examples/demo_orders.csv
+!packages/employee-performance-wps-workbuddy.zip

@@ -1,6 +1,28 @@
 # 电商核算 Skills
 
-包含三个独立 skill：**月度业绩核算**、**销售周报**和**剪辑人员业绩核算**。公开仓库只发布规则、计算脚本和合成示例／测试，实际报表和人员归属数据留在本地。
+包含四个独立 skill：**月度业绩核算**、**销售周报**、**剪辑人员业绩核算**和**有赞员工业绩与WPS日报**。公开仓库只发布规则、计算脚本和合成示例／测试，实际报表、员工名单、人员归属数据和凭据留在本地。
+
+## 有赞员工业绩日报：Codex / WorkBuddy
+
+该技能独立使用，不需要安装另外三个核算技能。接收有赞订单CSV，按归属员工统计每日业绩、高客单业绩、分数、订单数和高客单订单数，排除已关闭订单；可写入WPS员工分块、日期倒序的日报，优质用户账号业绩先留空。完整口径见 [employee-performance-wps](skills/employee-performance-wps/SKILL.md)。
+
+- **Codex**：让AI从本仓库的 `skills/employee-performance-wps` 安装技能；已有skills CLI时可用 `npx --yes skills add ZhangRulei/ecommerce-skills --skill employee-performance-wps --global --agent codex --yes`。
+- **WorkBuddy**：下载[WorkBuddy技能ZIP](packages/employee-performance-wps-workbuddy.zip?raw=true)，在“专家·技能·连接器 → 技能 → 添加技能”中上传。界面入口以当前版本为准，参见[官方技能指南](https://www.workbuddy.cn/docs/workbuddy/From-Beginner-to-Expert-Guide/Function-Description/Skills-Market)。ZIP与源码来自同一版本，额外提供WorkBuddy要求的展示元数据。
+
+安装后可发给AI：
+
+```text
+使用 employee-performance-wps 技能，先运行技能内的合成自检，不写云文档。
+请根据我提供的员工代码与姓名，在本机业务工作目录创建 private-rules.json：
+从技能 config/rules.json 复制规则，只替换 employee_codes，并将 employee_mapping_kind 设为 private。
+用这份私有配置核算我提供的有赞订单CSV；未指定日期时按北京时间昨天。
+仅按归属员工分配，空白或未知归属进入待归属；计分不明确时列出待核。
+输出核算表和核对明细。WPS同步时使用我有编辑权限的工作簿和本人授权，
+生成与本机名单一致的WPS脚本，先预览再按我的同步要求写入并回读核验。
+员工名单、凭据和真实订单均留在本机，不提交到GitHub。
+```
+
+首次使用需提供**员工映射、订单CSV和目标WPS链接**。当前只接通“CSV核算 → WPS同步”，未包含自动获取有赞订单或每天6点的定时任务。示例数据和示例员工配置均不能写入正式云表；本机配置后须重新核算。WPS接入步骤见[个人金山文档授权](skills/employee-performance-wps/references/wps-setup.md)。
 
 ## 同事使用指南
 
@@ -54,7 +76,7 @@
 npx --yes skills add ZhangRulei/ecommerce-skills --skill '*' --global --yes
 ```
 
-这会安装本仓库三个 skill 到用户级目录，使用skills CLI的代理选择规则。需要明确指定工具时，可追加 `--agent codex` 或 `--agent claude-code`；各工具支持情况以 [skills CLI文档](https://github.com/vercel-labs/skills/blob/main/docs/commands.md) 为准。
+这会安装本仓库四个 skill 到用户级目录，使用skills CLI的代理选择规则。需要明确指定工具时，可追加 `--agent codex` 或 `--agent claude-code`；各工具支持情况以 [skills CLI文档](https://github.com/vercel-labs/skills/blob/main/docs/commands.md) 为准。
 
 只查看可安装列表：
 
@@ -69,6 +91,7 @@ npx --yes skills add ZhangRulei/ecommerce-skills --list
 | [ecommerce-performance-accounting](skills/ecommerce-performance-accounting/SKILL.md) | 月度业绩、退款备注与投放费用核算 | 使用 ecommerce-performance-accounting 计算指定月份的店铺业绩。 |
 | [ecommerce-weekly-sales](skills/ecommerce-weekly-sales/SKILL.md) | 完整自然周GMV、支付、退款、退款率和实际成交 | 使用 ecommerce-weekly-sales 计算本月销售周报，跨月不截断，投放留空。 |
 | [clip-performance-accounting](skills/clip-performance-accounting/SKILL.md) | 按剪辑人员汇总多平台主页及投流业绩、当期创建和有效素材 | 使用 clip-performance-accounting 从原始导出计算多平台人员月报，并与最终版逐项核对。 |
+| [employee-performance-wps](skills/employee-performance-wps/SKILL.md) | 有赞每日员工业绩、高客单及分数，按截图版式同步WPS | 使用 employee-performance-wps 核算订单CSV，并同步我授权的WPS工作簿。 |
 
 销售周报支付与退款使用同一金额字段，完整自然周跨月不截断，月内累计单独统计；投放暂不计算。月度店铺业绩保留各渠道已确认的订单筛选、备注退款及费用规则。剪辑人员业绩按素材和账号归属统计，使用本地维护的人员映射；仓库提供[合成映射模板](skills/clip-performance-accounting/references/attribution.example.json)。
 
@@ -83,9 +106,15 @@ skills/
 │   ├── SKILL.md
 │   ├── references/
 │   └── scripts/
-└── clip-performance-accounting/
+├── clip-performance-accounting/
+│   ├── SKILL.md
+│   ├── references/
+│   └── scripts/
+└── employee-performance-wps/
     ├── SKILL.md
+    ├── config/
     ├── references/
+    ├── examples/
     └── scripts/
 ```
 
@@ -103,6 +132,20 @@ python skills/ecommerce-weekly-sales/scripts/test_calculate_weekly.py
 
 ```bash
 python skills/clip-performance-accounting/scripts/test_clip_accounting.py
+```
+
+员工业绩的9项Python测试、WPS明细更新与客户端模拟测试（无真实网络写入）：
+
+```bash
+python skills/employee-performance-wps/scripts/test_calculate.py
+node skills/employee-performance-wps/scripts/test_wps_sync.mjs
+node skills/employee-performance-wps/scripts/test_wps_client.mjs
+```
+
+使用Python 3.10+、Node.js 20.6+，无需第三方库；WPS网页版公式和样式仍需在目标文档首次接入时回读核对。公开WorkBuddy包从源码重新生成：
+
+```bash
+python tools/package_employee_performance.py
 ```
 
 规则为定制业务口径，不代表平台法定结算定义。使用时提供本次材料并核实字段及日期覆盖，不能沿用历史金额。

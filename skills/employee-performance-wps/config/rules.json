@@ -1,0 +1,27 @@
+{
+  "version": "2026-11-06",
+  "timezone": "Asia/Shanghai",
+  "date_basis": "订单创建时间",
+  "employee_mapping_kind": "synthetic_example",
+  "closed_status_fragments": ["关闭", "TRADE_CLOSED"],
+  "employee_codes": {
+    "SY": "示例员工SY",
+    "KX": "示例员工KX",
+    "MR": "示例员工MR",
+    "ZH": "示例员工ZH",
+    "WJ": "示例员工WJ",
+    "CD": "示例员工CD",
+    "XY": "示例员工XY",
+    "HH": "示例员工HH"
+  },
+  "unassigned_employee": "待归属",
+  "high_product_keywords": ["青春", "玉翡"],
+  "point_rules": [
+    {"keyword": "青春", "paid_yuan": "699.99", "points": 2},
+    {"keyword": "青春", "paid_yuan": "1299.99", "points": 4},
+    {"keyword": "玉翡", "paid_yuan": "1199.99", "points": 4}
+  ],
+  "high_count_basis": "有效高客单订单数",
+  "quality_performance": "留空",
+  "total_formula": "个人账号归属业绩汇总 + 优质用户账号业绩"
+}

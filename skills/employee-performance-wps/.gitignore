@@ -1,0 +1,8 @@
+credentials.local.env
+*.local.env
+out/
+__pycache__/
+*.pyc
+private-rules.json
+*.private.json
+.local/
